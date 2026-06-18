@@ -1,0 +1,299 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile definitions indicating level of access",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The unique identifier matching the user's Auth credential"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact and login email address"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user"
+        },
+        "phone": {
+          "type": "string",
+          "description": "WhatsApp or contact number of the user"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"],
+          "description": "System access level"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile generation moment"
+        }
+      },
+      "required": ["userId", "email", "name", "role", "createdAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Active subscription tiers and validity periods",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner of the subscription plan"
+        },
+        "package": {
+          "type": "string",
+          "enum": ["basic", "premium", "plus"],
+          "description": "Current pricing package"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "expired", "pending"],
+          "description": "Operational validity of subscription"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Subscription expiration date"
+        },
+        "features": {
+          "type": "object",
+          "description": "Toggled feature flags according to package tier"
+        }
+      },
+      "required": ["userId", "package", "status", "endDate"]
+    },
+    "Bot": {
+      "title": "Bot",
+      "description": "WhatsApp bot session properties and pairing status",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User owning this bot instance"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Connected WhatsApp number"
+        },
+        "sessionPath": {
+          "type": "string",
+          "description": "Path on disk holding auth credentials"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["disconnected", "pairing", "connected"],
+          "description": "Current socket or WhatsApp pairing step"
+        },
+        "qrCode": {
+          "type": "string",
+          "description": "Latest base64 pairing QR string if status is pairing"
+        },
+        "lastOnline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last moment the session saw traffic"
+        }
+      },
+      "required": ["userId", "status"]
+    },
+    "BotSettings": {
+      "title": "BotSettings",
+      "description": "Configuration matching Auto-reply rules, scheduling, response keywords, templates, and integrations",
+      "type": "object",
+      "properties": {
+        "botId": {
+          "type": "string",
+          "description": "Referenced bot document's unique ID"
+        },
+        "autoReply": {
+          "type": "boolean",
+          "description": "Standard keywords replies toggle flag"
+        },
+        "aiEnabled": {
+          "type": "boolean",
+          "description": "Automated AI-replies (Gemini/OpenAI) toggle flag"
+        },
+        "templates": {
+          "type": "array",
+          "description": "Re-usable template structures with keyword references"
+        },
+        "keywordResponses": {
+          "type": "array",
+          "description": "Direct simple mappings matching incoming string triggers"
+        },
+        "schedules": {
+          "type": "array",
+          "description": "Automated delay plans to broadcast strings at specific moments"
+        },
+        "webhookUrl": {
+          "type": "string",
+          "description": "Endpoint to invoke when messages arrive (Plus level exclusive)"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "Associated external access token"
+        }
+      },
+      "required": ["botId", "autoReply", "aiEnabled"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Financial ledger detailing SaaS checkout status",
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "description": "Referenced invoice token"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Checkout user"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Price paid"
+        },
+        "package": {
+          "type": "string",
+          "description": "Selected tier"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["unpaid", "paid", "expired"],
+          "description": "Operational validity of transaction"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Selected payment gateway option (QRIS, VA)"
+        },
+        "paidAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Moment of gateway validation"
+        }
+      },
+      "required": ["orderId", "userId", "amount", "package", "status"]
+    },
+    "BotLog": {
+      "title": "BotLog",
+      "description": "Activity logs for WhatsApp bots",
+      "type": "object",
+      "properties": {
+        "botId": {
+          "type": "string",
+          "description": "Id of the target WhatsApp Bot"
+        },
+        "activity": {
+          "type": "string",
+          "description": "Human-readable description of step or reaction taken"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["info", "success", "warning", "error"],
+          "description": "Level or criticality of entry"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time of transaction"
+        }
+      },
+      "required": ["botId", "activity", "type", "timestamp"]
+    },
+    "Analytics": {
+      "title": "Analytics",
+      "description": "Visual data counts tracking performance of connected bots",
+      "type": "object",
+      "properties": {
+        "botId": {
+          "type": "string",
+          "description": "Target WhatsApp Bot"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Aggregated date"
+        },
+        "messagesReceived": {
+          "type": "integer",
+          "description": "Count of messages received"
+        },
+        "messagesSent": {
+          "type": "integer",
+          "description": "Count of messages auto-dispatched"
+        },
+        "uniqueChats": {
+          "type": "integer",
+          "description": "Different threads touched"
+        },
+        "avgResponseTime": {
+          "type": "number",
+          "description": "Speed metric measuring reaction time"
+        }
+      },
+      "required": ["botId", "date", "messagesReceived", "messagesSent", "uniqueChats"]
+    },
+    "ApiKey": {
+      "title": "ApiKey",
+      "description": "SaaS integration tokens for API webhook dispatch",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Subscriber profile owner"
+        },
+        "key": {
+          "type": "string",
+          "description": "Private key hash string"
+        },
+        "name": {
+          "type": "string",
+          "description": "User label for key management"
+        },
+        "permissions": {
+          "type": "array",
+          "description": "Allowed endpoint scopes"
+        }
+      },
+      "required": ["userId", "key", "name"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Registered subscriber user documents"
+    },
+    "subscriptions/{subscriptionId}": {
+      "schema": "Subscription",
+      "description": "Pricing package limits maps connected to active user accounts"
+    },
+    "bots/{botId}": {
+      "schema": "Bot",
+      "description": "Active whatsapp pairings and device connection signals"
+    },
+    "botSettings/{settingId}": {
+      "schema": "BotSettings",
+      "description": "Operational automation toggles matching active bot documents"
+    },
+    "payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Active record of SaaS orders, QR checks and incoming logs"
+    },
+    "botLogs/{logId}": {
+      "schema": "BotLog",
+      "description": "Server session steps recorded chronologically"
+    },
+    "analytics/{analyticId}": {
+      "schema": "Analytics",
+      "description": "Daily counts describing chat performance metrics"
+    },
+    "apiKeys/{keyId}": {
+      "schema": "ApiKey",
+      "description": "Allowed API gateways representing white-label extensions"
+    }
+  }
+}
