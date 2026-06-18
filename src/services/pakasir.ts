@@ -19,7 +19,8 @@ export const PakasirService = {
     const amount = priceMap[targetPackage];
 
     // Generate simulated QRIS payment invoice
-    const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=00020101021226300016ID.CO.PAKASIR.WWW01189360011111111111115204000053033605802ID51180000000000000000005204000053033605802ID5912HighHostSaaS6005Medan61052011162070703A01422700000002`;
+    const brandAlpha = (process.env.VITE_BRAND_NAME || 'GeekzCS').replace(/[^a-zA-Z]/g, '');
+    const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=00020101021226300016ID.CO.PAKASIR.WWW01189360011111111111115204000053033605802ID51180000000000000000005204000053033605802ID5913${brandAlpha}6005Medan61052011162070703A01422700000002`;
 
     // Attempt actual integration if API keys are valid and not placeholders
     if (apiKey && apiKey !== 'your-api-key' && apiKey !== 'xxx') {

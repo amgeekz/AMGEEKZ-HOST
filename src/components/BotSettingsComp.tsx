@@ -9,7 +9,7 @@ interface BotSettingsCompProps {
 }
 
 export default function BotSettingsComp({ settings, subPackage, onUpdate, token }: BotSettingsCompProps) {
-  const [activeTab, setActiveTab] = useState<'keyword' | 'template' | 'schedule' | 'webhook'>('keyword');
+  const [activeTab, setActiveTab] = useState<'keyword' | 'template' | 'schedule' | 'webhook' | 'ai-agent'>('ai-agent'); // Default to AI Agent tab for highlighting the feature
   const [saving, setSaving] = useState(false);
   
   // Local forms state
@@ -17,6 +17,42 @@ export default function BotSettingsComp({ settings, subPackage, onUpdate, token 
   const [templateForm, setTemplateForm] = useState({ name: '', content: '' });
   const [scheduleForm, setScheduleForm] = useState({ recipient: '', message: '', time: '08:00', daily: true });
   const [webhookUrl, setWebhookUrl] = useState(settings?.webhookUrl || '');
+
+  // AI Agent forms state
+  const [aiForm, setAiForm] = useState({
+    agentName: settings?.agentName || import.meta.env.VITE_BRAND_NAME || 'GeekzCS',
+    systemPrompt: settings?.systemPrompt || '',
+    adminContacts: settings?.adminContacts || '',
+    productSyncUrl: settings?.productSyncUrl || '',
+    customProductData: settings?.customProductData || '',
+    aiMode: settings?.aiMode || 'single',
+    salesAgentName: settings?.salesAgentName || 'GeekzSales',
+    salesAgentPrompt: settings?.salesAgentPrompt || '',
+    techAgentName: settings?.techAgentName || 'GeekzTech',
+    techAgentPrompt: settings?.techAgentPrompt || '',
+    billingAgentName: settings?.billingAgentName || 'GeekzBilling',
+    billingAgentPrompt: settings?.billingAgentPrompt || ''
+  });
+
+  React.useEffect(() => {
+    if (settings) {
+      setWebhookUrl(settings.webhookUrl || '');
+      setAiForm({
+        agentName: settings.agentName || import.meta.env.VITE_BRAND_NAME || 'GeekzCS',
+        systemPrompt: settings.systemPrompt || '',
+        adminContacts: settings.adminContacts || '',
+        productSyncUrl: settings.productSyncUrl || '',
+        customProductData: settings.customProductData || '',
+        aiMode: settings.aiMode || 'single',
+        salesAgentName: settings.salesAgentName || 'GeekzSales',
+        salesAgentPrompt: settings.salesAgentPrompt || '',
+        techAgentName: settings.techAgentName || 'GeekzTech',
+        techAgentPrompt: settings.techAgentPrompt || '',
+        billingAgentName: settings.billingAgentName || 'GeekzBilling',
+        billingAgentPrompt: settings.billingAgentPrompt || ''
+      });
+    }
+  }, [settings]);
 
   const tier = subPackage?.toLowerCase() || 'basic';
   const hasAiPermission = tier === 'premium' || tier === 'plus';
@@ -259,6 +295,15 @@ export default function BotSettingsComp({ settings, subPackage, onUpdate, token 
             }`}
           >
             Webhook Integration
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ai-agent')}
+            className={`pb-3 px-4 text-xs font-semibold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'ai-agent' ? 'border-brand-500 text-brand-500' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            🤖 Agen CS AI ({import.meta.env.VITE_BRAND_NAME || 'GeekzCS'})
           </button>
         </div>
 
@@ -526,6 +571,284 @@ export default function BotSettingsComp({ settings, subPackage, onUpdate, token 
   "timestamp": "${new Date().toISOString()}"
 }`}
                 </pre>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'ai-agent' && (
+          <div className="space-y-6">
+            <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl flex items-start gap-3">
+              <Plus className="text-emerald-400 w-5 h-5 mt-0.5 shrink-0 rotate-45" />
+              <div className="space-y-1">
+                <h4 className="font-semibold text-emerald-300 text-sm uppercase font-mono">Pengaturan Model Agen CS AI (Tanpa Coding)</h4>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Modifikasi kepribadian, nama panggilan, cara menjawab, daftar kontak darurat admin, hingga sumber produk untuk asisten AI Anda di WA. Perubahan akan langsung disinkronisasi ke engine AI secara real-time.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const updated = {
+                ...settings,
+                agentName: aiForm.agentName,
+                systemPrompt: aiForm.systemPrompt,
+                adminContacts: aiForm.adminContacts,
+                productSyncUrl: aiForm.productSyncUrl,
+                customProductData: aiForm.customProductData,
+                aiMode: aiForm.aiMode,
+                salesAgentName: aiForm.salesAgentName,
+                salesAgentPrompt: aiForm.salesAgentPrompt,
+                techAgentName: aiForm.techAgentName,
+                techAgentPrompt: aiForm.techAgentPrompt,
+                billingAgentName: aiForm.billingAgentName,
+                billingAgentPrompt: aiForm.billingAgentPrompt
+              };
+              triggerSave(updated);
+            }} className="space-y-5">
+              {/* AI MODE SELECTION */}
+              <div className="bg-[#0A0A0B]/65 border border-slate-800/40 p-4 rounded-xl space-y-3">
+                <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">
+                  Mode Arsitektur AI Agent
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAiForm({ ...aiForm, aiMode: 'single' })}
+                    className={`py-3 px-4 rounded-xl text-xs font-semibold border flex flex-col gap-1 items-start text-left transition duration-150 ${
+                      aiForm.aiMode === 'single'
+                        ? 'bg-brand-500/10 border-brand-500/40 text-brand-400'
+                        : 'bg-slate-900/45 border-slate-850 text-slate-400 hover:border-slate-800'
+                    }`}
+                  >
+                    <span className="font-bold">🧑‍💼 Single Agent Mode</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Satu asisten utama menangani seluruh pertanyaan pembeli secara umum.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiForm({ ...aiForm, aiMode: 'multi' })}
+                    className={`py-3 px-4 rounded-xl text-xs font-semibold border flex flex-col gap-1 items-start text-left transition duration-150 ${
+                      aiForm.aiMode === 'multi'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                        : 'bg-slate-900/45 border-slate-850 text-slate-400 hover:border-slate-800'
+                    }`}
+                  >
+                    <span className="font-bold">🤖 Multi-Agent System (Cooperative)</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Tiga asisten ahli (Sales, Tech & Billing) dikoordinasikan secara cerdas berdasarkan analisa pesan.</span>
+                  </button>
+                </div>
+              </div>
+
+              {aiForm.aiMode === 'single' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Nama Panggilan Agen (Agent AI Name)</label>
+                      <input
+                        type="text"
+                        required={aiForm.aiMode === 'single'}
+                        placeholder={`Contoh: ${import.meta.env.VITE_BRAND_NAME || 'GeekzCS'}`}
+                        value={aiForm.agentName}
+                        onChange={(e) => setAiForm({ ...aiForm, agentName: e.target.value })}
+                        className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 font-sans"
+                      />
+                      <span className="text-[10.5px] text-slate-500 block leading-tight">Digunakan AI untuk memperkenalkan diri ke pelanggan.</span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Nomor Kontak Admin (Tampil Jika AI Bingung)</label>
+                      <textarea
+                        rows={1}
+                        placeholder="Inod: +62 856-4945-5626&#10;Michael: +62 812-4809-5727"
+                        value={aiForm.adminContacts}
+                        onChange={(e) => setAiForm({ ...aiForm, adminContacts: e.target.value })}
+                        className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-brand-500 font-mono"
+                      />
+                      <span className="text-[10.5px] text-slate-500 block leading-tight">Digunakan jika pelanggan menanyakan info rujukan detail.</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Sistem Prompt Awal / Petunjuk Kepribadian AI Agent</label>
+                    <textarea
+                      rows={6}
+                      required={aiForm.aiMode === 'single'}
+                      placeholder="Contoh: Kamu adalah Customer service amgeekz.com. Panggil pembeli dengan Kak..."
+                      value={aiForm.systemPrompt}
+                      onChange={(e) => setAiForm({ ...aiForm, systemPrompt: e.target.value })}
+                      className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 leading-relaxed font-sans"
+                    />
+                    <span className="text-[10.5px] text-slate-500 block leading-tight">
+                      Tulis aturan kepemimpinan, aturan chat, dilarang kasar, batas refund, diskon dll di sini. Gunakan tag <code className="bg-slate-850 px-1 py-0.5 rounded text-slate-300 font-mono text-[9.5px]">{"{AGENT_NAME}"}</code> untuk merujuk pada Nama Agen secara dinamis.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6 border-l-2 border-emerald-500/30 pl-4">
+                  <div className="bg-[#0A0A0B]/40 p-3 rounded-lg text-xs text-slate-400 leading-tight">
+                    🔥 <b className="text-emerald-400">Arsitektur Multi-Agent Aktif:</b> Router AI kami akan secara otomatis membaca topik pesan masuk dari pelanggan dan mengarahkannya ke asisten ahli yang memiliki petunjuk prompt paling spesifik di bawah ini.
+                  </div>
+
+                  {/* 1. AGENT SALES */}
+                  <div className="bg-[#111114] border border-slate-850 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-850 pb-2">
+                      <span className="text-lg">📣</span>
+                      <div>
+                        <h5 className="font-bold text-xs text-slate-200 uppercase font-mono tracking-wide">Agen Spesialis 1: Sales & Marketing CS</h5>
+                        <p className="text-[10px] text-slate-500">Merespon chat umum, sambutan, perkenalan, serta penawaran rujukan diskon produk.</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="md:col-span-1 space-y-1.5">
+                        <label className="text-[10px] font-mono text-slate-450 block font-semibold">Nama Agen Sales</label>
+                        <input
+                          type="text"
+                          required={aiForm.aiMode === 'multi'}
+                          value={aiForm.salesAgentName}
+                          onChange={(e) => setAiForm({ ...aiForm, salesAgentName: e.target.value })}
+                          className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="md:col-span-3 space-y-1.5">
+                        <label className="text-[10px] font-mono text-slate-450 block font-semibold">Panduan Prompt Spesifik Sales (Persuasi & Layanan)</label>
+                        <textarea
+                          rows={3}
+                          required={aiForm.aiMode === 'multi'}
+                          value={aiForm.salesAgentPrompt}
+                          onChange={(e) => setAiForm({ ...aiForm, salesAgentPrompt: e.target.value })}
+                          className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. AGENT TECH */}
+                  <div className="bg-[#111114] border border-slate-850 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-850 pb-2">
+                      <span className="text-lg">🔧</span>
+                      <div>
+                        <h5 className="font-bold text-xs text-slate-200 uppercase font-mono tracking-wide">Agen Spesialis 2: Bantuan Teknis (Tech Support)</h5>
+                        <p className="text-[10px] text-slate-500">Merespon chat tentang masalah server, cara setup bot WA, error Baileys, atau konfigurasi VPS.</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="md:col-span-1 space-y-1.5">
+                        <label className="text-[10px] font-mono text-slate-450 block font-semibold">Nama Agen Teknis</label>
+                        <input
+                          type="text"
+                          required={aiForm.aiMode === 'multi'}
+                          value={aiForm.techAgentName}
+                          onChange={(e) => setAiForm({ ...aiForm, techAgentName: e.target.value })}
+                          className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="md:col-span-3 space-y-1.5">
+                        <label className="text-[10px] font-mono text-slate-450 block font-semibold">Panduan Prompt Spesifik Teknis (Instruksi Solusi Error)</label>
+                        <textarea
+                          rows={3}
+                          required={aiForm.aiMode === 'multi'}
+                          value={aiForm.techAgentPrompt}
+                          onChange={(e) => setAiForm({ ...aiForm, techAgentPrompt: e.target.value })}
+                          className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. AGENT BILLING */}
+                  <div className="bg-[#111114] border border-slate-850 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-850 pb-2">
+                      <span className="text-lg">💳</span>
+                      <div>
+                        <h5 className="font-bold text-xs text-slate-200 uppercase font-mono tracking-wide">Agen Spesialis 3: Keuangan & Billing Admin</h5>
+                        <p className="text-[10px] text-slate-500">Merespon chat tentang harga pendaftaran, metode bayar (QRIS/Bank), invoice, dan kebijakan refund.</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="md:col-span-1 space-y-1.5">
+                        <label className="text-[10px] font-mono text-slate-450 block font-semibold">Nama Agen Billing</label>
+                        <input
+                          type="text"
+                          required={aiForm.aiMode === 'multi'}
+                          value={aiForm.billingAgentName}
+                          onChange={(e) => setAiForm({ ...aiForm, billingAgentName: e.target.value })}
+                          className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="md:col-span-3 space-y-1.5">
+                        <label className="text-[10px] font-mono text-slate-450 block font-semibold">Panduan Prompt Spesifik Billing (Metode Bayar & S&K Refund)</label>
+                        <textarea
+                          rows={3}
+                          required={aiForm.aiMode === 'multi'}
+                          value={aiForm.billingAgentPrompt}
+                          onChange={(e) => setAiForm({ ...aiForm, billingAgentPrompt: e.target.value })}
+                          className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Nomor Rujukan Admin (Cadangan untuk Semua Agen)</label>
+                    <textarea
+                      rows={1}
+                      placeholder="Inod: +62 856-4945-5626"
+                      value={aiForm.adminContacts}
+                      onChange={(e) => setAiForm({ ...aiForm, adminContacts: e.target.value })}
+                      className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t border-slate-850/60 pt-4 space-y-4">
+                <h4 className="text-xs font-semibold text-slate-200 uppercase font-mono tracking-wider">Sumber Katalog Produk Agen (CS Knowledgebase)</h4>
+                
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">URL Sinkronisasi Layanan / Produk Live (API HTTP GET)</label>
+                  <input
+                    type="url"
+                    placeholder="Contoh: https://amgeekz.com/api/service"
+                    value={aiForm.productSyncUrl}
+                    onChange={(e) => setAiForm({ ...aiForm, productSyncUrl: e.target.value })}
+                    className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 font-mono"
+                  />
+                  <span className="text-[10.5px] text-slate-500 block leading-tight">
+                    Setiap kali ada pesan WA masuk, bot akan mencoba mengunduh daftar produk real-time dari API ini secara otomatis sebagai modal menjawab chat pembeli.
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block font-semibold">Data Produk Cadangan Offline (Format JSON Array)</label>
+                  <textarea
+                    rows={4}
+                    placeholder={`[
+  { "nama_layanan": "Topup Pulsa", "brand": "Telkomsel", "status": "Tersedia", "price": "Rp 12,000" }
+]`}
+                    value={aiForm.customProductData}
+                    onChange={(e) => setAiForm({ ...aiForm, customProductData: e.target.value })}
+                    className="w-full bg-[#0A0A0B] border border-slate-800/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 font-mono leading-relaxed"
+                  />
+                  <span className="text-[10.5px] text-slate-500 block leading-tight">
+                    Digunakan jika URL sinkronisasi di atas kosong, offline, atau terjadi kendala server eksternal. Sediakan format JSON array yang benar.
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-3 border-t border-slate-850/60">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-brand-500 hover:bg-brand-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition duration-150 cursor-pointer"
+                >
+                  {saving ? (
+                    <Clock className="w-4.5 h-4.5 animate-spin" />
+                  ) : (
+                    <Send className="w-4.5 h-4.5 transition group-hover:translate-x-0.5" />
+                  )}
+                  {saving ? 'Menyimpan...' : 'Simpan Konfigurasi Agen CS AI'}
+                </button>
               </div>
             </form>
           </div>

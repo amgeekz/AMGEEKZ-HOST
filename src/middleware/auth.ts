@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { Database, User } from '../db/dbInstance';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secure-highhost-secret-string';
+const JWT_SECRET = process.env.JWT_SECRET || 'secure-geekzhost-secret-string';
 
 // Interface expansion to link custom authenticated fields to Express requests
 export interface AuthenticatedRequest extends Request {

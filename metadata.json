@@ -1,6 +1,6 @@
 {
-  "name": "WhatsApp Bot Hosting",
-  "description": "Platform hosting bot WhatsApp berbasis library Baileys performa tinggi dilengkapi asisten AI Customer Service interaktif dan integrasi gateway Pakasir.",
+  "name": "GeekzCS",
+  "description": "Platform hosting bot WhatsApp dengan asisten AI Customer Service interaktif yang sepenuhnya dapat disesuaikan tanpa coding, sinkronisasi katalog produk live, dan pairing Baileys.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

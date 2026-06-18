@@ -23,9 +23,9 @@ const activeIntervals = new Map<string, NodeJS.Timeout>();
 
 export const BotService = {
   // Starts a bot session
-  startBot: async (botId: string, userId: string, io?: any) => {
+  startBot: async (botId: string, userId: string, io?: any, method?: 'qr' | 'pairing', phoneNumber?: string) => {
     try {
-      console.log(`Starting WhatsApp Bot Service for User ${userId}, Bot ${botId}`);
+      console.log(`Starting WhatsApp Bot Service for User ${userId}, Bot ${botId} via ${method || 'qr'}`);
       
       // Load current status or insert
       let bot = Database.getBots().find(b => b.botId === botId);
@@ -45,27 +45,50 @@ export const BotService = {
       const userSub = subscriptions.find(s => s.userId === userId);
       const tier = userSub?.package || 'basic';
 
-      // Transition to pairing status & generate a valid QR code
+      // Transition to pairing status & generate pairing info or QR code
+      const connectMethod = method || 'qr';
       bot.status = 'pairing';
-      // High-fidelity payment/pairing QR mock content
-      bot.qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=WAPairingCode-${botId}-${Date.now()}`;
-      Database.saveBot(bot);
-      Database.addBotLog(botId, 'Mempersiapkan autentikasi multi-device (Baileys)...', 'info');
-      Database.addBotLog(botId, 'QR Code sukses dihasilkan. Silahkan scan dari perangkat WhatsApp Anda.', 'warning');
+
+      if (connectMethod === 'pairing') {
+        const formattedNum = phoneNumber || '6281234567890';
+        const chunk1 = Math.random().toString(36).substring(3, 7).toUpperCase();
+        const chunk2 = Math.random().toString(36).substring(3, 7).toUpperCase();
+        const generatedCode = `${chunk1}-${chunk2}`;
+        bot.pairingCode = generatedCode;
+        bot.qrCode = undefined;
+        Database.saveBot(bot);
+
+        Database.addBotLog(botId, `Mempersiapkan autentikasi Baileys via Kode Pairing...`, 'info');
+        Database.addBotLog(botId, `Kode Pairing sukses dihasilkan untuk nomor ${formattedNum}: ${generatedCode}`, 'warning');
+        Database.addBotLog(botId, `Silakan buka WhatsApp di HP Anda -> Perangkat Tertaut -> Tautkan dengan nomor telepon, kemudian masukkan kode di atas.`, 'info');
+      } else {
+        bot.qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=WAPairingCode-${botId}-${Date.now()}`;
+        bot.pairingCode = undefined;
+        Database.saveBot(bot);
+
+        Database.addBotLog(botId, 'Mempersiapkan autentikasi multi-device (Baileys)...', 'info');
+        Database.addBotLog(botId, 'QR Code sukses dihasilkan. Silahkan scan dari perangkat WhatsApp Anda.', 'warning');
+      }
 
       // Dispatch state update to frontend via socket if present
       if (io) {
-        io.emit(`bot-status:${userId}`, { status: bot.status, qrCode: bot.qrCode });
+        io.emit(`bot-status:${userId}`, { 
+          status: bot.status, 
+          qrCode: bot.qrCode, 
+          pairingCode: bot.pairingCode, 
+          phoneNumber: phoneNumber 
+        });
       }
 
-      // Auto-connect simulator after a realistic duration (e.g., 5 seconds after scan simulator)
+      // Auto-connect simulator after a realistic duration (e.g., 7 seconds)
       const timeoutId = setTimeout(() => {
         try {
           const currentBot = Database.getBots().find(b => b.botId === botId);
           if (currentBot && currentBot.status === 'pairing') {
             currentBot.status = 'connected';
-            currentBot.phoneNumber = userSub?.package === 'plus' ? '6281987654321' : '6281234567890';
+            currentBot.phoneNumber = phoneNumber || (userSub?.package === 'plus' ? '6281987654321' : '6281234567890');
             currentBot.qrCode = undefined;
+            currentBot.pairingCode = undefined;
             currentBot.lastOnline = new Date().toISOString();
             Database.saveBot(currentBot);
 
@@ -115,6 +138,7 @@ export const BotService = {
       if (bot) {
         bot.status = 'disconnected';
         bot.qrCode = undefined;
+        bot.pairingCode = undefined;
         Database.saveBot(bot);
         Database.addBotLog(botId, 'Sesi WhatsApp dihentikan oleh user.', 'info');
       }
@@ -173,6 +197,22 @@ export const BotService = {
         const userSub = Database.getSubscriptions().find(s => s.userId === userId);
         const tier = userSub?.package || 'basic';
 
+        // Check Daily Hit limit constraint
+        const dateStr = new Date().toISOString().split('T')[0];
+        const analyticsList = Database.getAnalytics(botId);
+        const todayRecord = analyticsList.find(a => a.date === dateStr);
+        const outgoingToday = todayRecord ? todayRecord.messagesSent : 0;
+        
+        let hitLimit = 100; // default BASIC
+        if (tier === 'premium') hitLimit = 1000;
+        if (tier === 'plus') hitLimit = 10000;
+
+        if (outgoingToday >= hitLimit) {
+          const warnMsg = `⚠️ Batas Hit Harian Terlampaui untuk Paket ${tier.toUpperCase()} (${outgoingToday}/${hitLimit}). Mengabaikan respon chat dari ${sender.name}.`;
+          Database.addBotLog(botId, warnMsg, 'warning');
+          return;
+        }
+
         // 1. Check keyword-based triggers (Basic Tier covers this)
         if (settings.autoReply && settings.keywordResponses) {
           const match = settings.keywordResponses.find(kr => 
@@ -196,27 +236,127 @@ export const BotService = {
           Database.addBotLog(botId, `Memproses balasan menggunakan engine AI (${tier.toUpperCase()})...`, 'info');
           
           try {
-            let aiReply = "Halo! Maaf, kecerdasan buatan kami sedang sibuk saat ini.";
-            
+            let aiReply = "Halo Kak! Maaf, kecerdasan buatan kami sedang sibuk saat ini.";
+
+            // Log attempt to retrieve & sync catalog
+            let syncedProducts: any[] = [];
+            if (settings.productSyncUrl) {
+              try {
+                Database.addBotLog(botId, `Menghubungi URL Sinkronisasi Produk: ${settings.productSyncUrl}`, 'info');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout limit
+                const response = await fetch(settings.productSyncUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (response.ok) {
+                  const data = await response.json();
+                  if (Array.isArray(data)) {
+                    syncedProducts = data.map((item: any) => {
+                      const s = item.data || item;
+                      return {
+                        nama_layanan: s.nama_layanan || s.name || "Produk",
+                        brand: s.brand || process.env.VITE_BRAND_NAME || "GeekzCS",
+                        status: s.status || "Tersedia",
+                        price: s.price || s.harga || "Hubungi Admin"
+                      };
+                    });
+                    Database.addBotLog(botId, `Sinkronisasi Katalog Berhasil! Memuat ${syncedProducts.length} layanan live.`, 'success');
+                  }
+                }
+              } catch (fetchErr) {
+                // Silently bypass to custom statically saved catalog
+                Database.addBotLog(botId, `Sinkronisasi URL offline, menggunakan data produk kustom tersimpan.`, 'warning');
+              }
+            }
+
+            // Fallback to static JSON settings if URL fetch did not produce results
+            if (syncedProducts.length === 0 && settings.customProductData) {
+              try {
+                syncedProducts = JSON.parse(settings.customProductData);
+              } catch (parseEx) {
+                console.error("Failed to parse custom static products", parseEx);
+              }
+            }
+
+            // Final fallback default services catalog
+            if (syncedProducts.length === 0) {
+              const bName = process.env.VITE_BRAND_NAME || 'GeekzCS';
+              syncedProducts = [
+                { nama_layanan: `${bName} VPS Premium`, brand: bName, status: "Tersedia", price: "Rp 75,000" },
+                { nama_layanan: "Bot WhatsApp Gateway Basic", brand: bName, status: "Tersedia", price: "Rp 50,000" }
+              ];
+            }
+
+            const formattedProducts = syncedProducts.map((p: any) => 
+              `- *${p.nama_layanan || p.name}* (${p.brand || 'Brand'}): Status: ${p.status || 'Tersedia'} - Harga: ${p.price || p.harga || 'Hubungi Admin'}`
+            ).join('\n');
+
+            let activeAgentName = settings.agentName || process.env.VITE_BRAND_NAME || 'GeekzCS';
+            let activeAgentPrompt = settings.systemPrompt || 'Kamu adalah customer service untuk website kami.';
+            let modeLabel = 'SINGLE CS';
+            const adminContacts = settings.adminContacts || 'Inod: +62 856-4945-5626\nMichael: +62 812-4809-5727';
+
+            if (settings.aiMode === 'multi') {
+              const textLower = incomingText.toLowerCase();
+              if (textLower.includes('vps') || textLower.includes('connect') || textLower.includes('error') || textLower.includes('setup') || textLower.includes('config') || textLower.includes('webhook') || textLower.includes('mati') || textLower.includes('down') || textLower.includes('sand') || textLower.includes('teknis')) {
+                activeAgentName = settings.techAgentName || 'GeekzTech';
+                activeAgentPrompt = settings.techAgentPrompt || '';
+                modeLabel = 'MULTI-AGENT 🔧 TECH SUPPORT';
+                Database.addBotLog(botId, `🤖 [Multi-Agent Router] Deteksi topik: [TEKNIS]. Mengarahkan chat ke Agen Spesialis: [${activeAgentName}]`, 'info');
+              } else if (textLower.includes('bayar') || textLower.includes('harga') || textLower.includes('invoice') || textLower.includes('beli') || textLower.includes('paket') || textLower.includes('premium') || textLower.includes('plus') || textLower.includes('basic') || textLower.includes('refund') || textLower.includes('kembal') || textLower.includes('uang') || textLower.includes('qris') || textLower.includes('rekening') || textLower.includes('tarif') || textLower.includes('promo') || textLower.includes('biaya')) {
+                activeAgentName = settings.billingAgentName || 'GeekzBilling';
+                activeAgentPrompt = settings.billingAgentPrompt || '';
+                modeLabel = 'MULTI-AGENT 💳 BILLING & SALES';
+                Database.addBotLog(botId, `🤖 [Multi-Agent Router] Deteksi topik: [BILLING & SALES]. Mengarahkan chat ke Agen Spesialis: [${activeAgentName}]`, 'info');
+              } else {
+                activeAgentName = settings.salesAgentName || 'GeekzSales';
+                activeAgentPrompt = settings.salesAgentPrompt || '';
+                modeLabel = 'MULTI-AGENT 📣 PROMO CS';
+                Database.addBotLog(botId, `🤖 [Multi-Agent Router] Deteksi topik: [UMUM/PROMO]. Mengarahkan chat ke Agen Spesialis: [${activeAgentName}]`, 'info');
+              }
+            }
+
+            // Compile settings placeholders
+            const compiledPrompt = activeAgentPrompt
+              .replace(/{AGENT_NAME}/g, activeAgentName)
+              .replace(/{ADMIN_CONTACTS}/g, adminContacts);
+
+            const promptInput = `
+## TENTANG AGEN/PROFIL CS
+${compiledPrompt}
+
+## PRODUK & LAYANAN LIVE YANG TERSEDIA
+${formattedProducts}
+
+## KONTAK ADMIN WHATSAPP TAMBAHAN
+${adminContacts}
+
+## INFORMASI PENGIRIM
+Nama Pengirim: ${sender.name}
+Nomor WhatsApp Pengirim: ${sender.phone}
+
+## PERTANYAAN MASUK DARI KONSUMEN
+"${incomingText}"
+
+TUGAS:
+Hasilkan balasan responsif, ramah, dan solutif mengikuti petunjuk tentang agen di atas. Panggil dia dengan "Kak" (bukan "Anda"). Berbahasa Indonesia yang akrab dan santun. Berikan jawaban yang padat dan jelas (maksimal 2 atau 3 kalimat).`;
+
             if (aiClient) {
               const geminiResponse = await aiClient.models.generateContent({
                 model: 'gemini-3.5-flash',
-                contents: `Context: You are a friendly WhatsApp automated helpful bot hosting SaaS agent.
-Incoming message from user "${sender.name}": "${incomingText}"
-Generate a short 1-2 sentence response helpful to this client in Indonesian language (Bahasa Indonesia). Keep it friendly.`,
+                contents: promptInput,
                 config: {
-                  systemInstruction: "You are representing a professional WhatsApp Bot SaaS named HighHost. Be succinct."
+                  systemInstruction: `You are a helpful Automated Customer Service representative named ${activeAgentName} (Role: ${modeLabel}). Be polite and speak in conversational Indonesian.`
                 }
               });
               aiReply = geminiResponse.text || aiReply;
             } else {
-              // High-quality local generative heuristics in case Gemini API key is placeholder
+              // High-quality local heuristics if Gemini key isn't loaded yet
               if (incomingText.toLowerCase().includes('resep')) {
-                aiReply = `Halo ${sender.name}! Resep nasi goreng spesial: tumis bawang merah, putih, cabai, tambahkan telur, nasi dingin, kecap manis, dan garam secukupnya. Sajikan selagi hangat!`;
-              } else if (incomingText.toLowerCase().includes('webhook')) {
-                aiReply = `Tentu! Integrasi Webhook eksklusif hanya tersedia pada Paket PLUS (Rp 300.000). Sangat andal untuk otomatisasi system API Anda.`;
+                aiReply = `Halo Kak ${sender.name}! Resep nasi goreng praktis ala ${activeAgentName}: tumis cincang bawang, masukkan telur orak-arik, disusul nasi dingin & kecap. Silahkan dicoba ya Kak!`;
+              } else if (incomingText.toLowerCase().includes('webhook') || incomingText.toLowerCase().includes('premium')) {
+                aiReply = `Tentu Kak ${sender.name}! Paket PREMIUM atau PLUS sudah terintegrasi fitur Auto-Reply AI ${activeAgentName} & Webhook handal untuk otomatisasi maksimal.`;
               } else {
-                aiReply = `Halo ${sender.name}, terima kasih telah menghubungi kami. Tim support AI kami hadir untuk membantu kesuksesan bot WhatsApp Anda secara 24/7!`;
+                aiReply = `Halo Kak ${sender.name}! Saya ${activeAgentName} (${modeLabel}), asisten CS siap membantu. Ada produk atau kendala apa yang bisa saya layani hari ini?`;
               }
             }
 
@@ -230,9 +370,9 @@ Generate a short 1-2 sentence response helpful to this client in Indonesian lang
             }, 2500);
             responseDispatched = true;
 
-          } catch (aiErr) {
+          } catch (aiErr: any) {
             console.error("AI Error:", aiErr);
-            const fallbackReply = `Terima kasih atas pesannya! AI sedang sinkronisasi, mohon hubungi admin jika butuh info lengkap.`;
+            const fallbackReply = `Terima kasih atas pesannya Kak! AI kami sedang melakukan pemeliharaan rutin, silakan ketik keyword atau hubungi Admin `;
             Database.addBotLog(botId, `Pesan Terkirim ke ${sender.name} (AI Fallback): "${fallbackReply}"`, 'info');
             Database.recordAnalyticEvent(botId, 'sent');
           }

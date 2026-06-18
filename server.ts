@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import apiRouter, { setSocketIo } from './src/routes/api';
 import { BotService } from './src/services/botService';
 
-const PORT = 3000;
+const PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
 
 async function startServer() {
   const app = express();
@@ -79,8 +79,9 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
+    const brand = process.env.VITE_BRAND_NAME || 'GeekzCS';
     console.log(`===============================================`);
-    console.log(`📡 HighHost WA Bot Hosting Server is ONLINE`);
+    console.log(`📡 ${brand} WA Bot Hosting Server is ONLINE`);
     console.log(`🔗 Local Address: http://localhost:${PORT}`);
     console.log(`🌍 External URL Ingress running on port ${PORT}`);
     console.log(`===============================================`);
@@ -88,5 +89,6 @@ async function startServer() {
 }
 
 startServer().catch((error) => {
-  console.error("💥 FAILED starting HighHost server application:", error);
+  const brand = process.env.VITE_BRAND_NAME || 'GeekzCS';
+  console.error(`💥 FAILED starting ${brand} server application:`, error);
 });

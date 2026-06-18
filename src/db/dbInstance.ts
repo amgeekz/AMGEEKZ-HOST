@@ -27,6 +27,7 @@ export interface Bot {
   sessionPath: string;
   status: 'disconnected' | 'pairing' | 'connected';
   qrCode?: string;
+  pairingCode?: string;
   lastOnline: string;
 }
 
@@ -60,6 +61,20 @@ export interface BotSettings {
   schedules: Schedule[];
   webhookUrl?: string;
   apiKey?: string;
+  // AI Customer Service Customizers (No Coding Necessary)
+  agentName?: string;
+  systemPrompt?: string;
+  adminContacts?: string;
+  productSyncUrl?: string;
+  customProductData?: string;
+  // Multi-Agent Configuration
+  aiMode?: 'single' | 'multi';
+  salesAgentName?: string;
+  salesAgentPrompt?: string;
+  techAgentName?: string;
+  techAgentPrompt?: string;
+  billingAgentName?: string;
+  billingAgentPrompt?: string;
 }
 
 export interface Payment {
@@ -228,7 +243,7 @@ export const Database = {
       settings = {
         botId,
         autoReply: true,
-        aiEnabled: false,
+        aiEnabled: true,
         templates: [
           { id: 't1', name: 'Greeting', content: 'Halo! Selamat datang di layanan kami.' },
           { id: 't2', name: 'Support', content: 'Ada yang bisa kami bantu? Sampaikan kendala Anda ya.' }
@@ -238,7 +253,51 @@ export const Database = {
           { id: 'k2', keyword: 'halo', response: 'Halo juga! Selamat datang.' },
           { id: 'k3', keyword: 'harga', response: 'Berikut paket berlangganan WhatsApp Bot Hosting:\n1. BASIC (Rp 50rb)\n2. PREMIUM (Rp 150rb)\n3. PLUS (Rp 300rb)' }
         ],
-        schedules: []
+        schedules: [],
+        agentName: process.env.VITE_BRAND_NAME || 'GeekzCS',
+        systemPrompt: `Kamu adalah customer service untuk website kami, dan nama kamu {AGENT_NAME}. Kamu akan membantu Kakak dengan pertanyaan seputar produk dan layanan kami.
+
+## Tugas
+Tugas kamu adalah membantu menjawab pertanyaan seputar produk dan layanan yang tersedia. Jika Kakak punya masalah atau kebingungan seputar produk kami, kamu akan berusaha memberikan solusi yang bisa membantu.
+
+## Convert
+ubah angka untuk harga produk Contoh : dari 30000 menjadi Rp 30,000
+
+## Prosedur Pembelian
+- Pilih produk yang Kakak mau beli, isi data yang diperlukan, dan pilih metode pembayaran yang sesuai.
+- Jangan lupa untuk double-check produk dan jumlah sebelum bayar ya.
+
+## Keamanan Pembayaran
+Kami menggunakan sistem pembayaran yang aman dan terpercaya. Semua transaksi Kakak dilindungi dengan teknologi enkripsi untuk menjaga data pribadi dan pembayaran Kakak tetap aman.
+
+## Panggilan
+Panggil Kakak dengan "Kak", ya! Hidari pakai kata "Anda", biar lebih akrab.
+
+## Batasan
+Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih solusi yang kira-kira bisa bantu. Kalau belum bisa, nanti saya arahkan Kakak ke WhatsApp admin kami.`,
+        adminContacts: `admin: +62 856-4945-5626`,
+        productSyncUrl: '',
+        customProductData: `[
+  {
+    "nama_layanan": "VPS Premium Hosting",
+    "brand": "${process.env.VITE_BRAND_NAME || 'GeekzCS'}",
+    "status": "Tersedia",
+    "price": "Rp 75,000"
+  },
+  {
+    "nama_layanan": "Bot WhatsApp Gateway Basic",
+    "brand": "${process.env.VITE_BRAND_NAME || 'GeekzCS'}",
+    "status": "Tersedia",
+    "price": "Rp 50,000"
+  }
+]`,
+        aiMode: 'single',
+        salesAgentName: 'GeekzSales',
+        salesAgentPrompt: `Kamu spesialis marketing dan promo produk di website kami. Berusahalah membujuk Kakak secara ramah & persuasif agar bertransaksi membeli layanan VPS atau Bot hosting. Tawarkan diskon halus jika relevan. Panggil selalu dengan "Kak".`,
+        techAgentName: 'GeekzTech',
+        techAgentPrompt: `Kamu spesialis bantuan teknis (Tech Support). Tugasmu membantu Kakak memecahkan masalah error koneksi Baileys, setup Webhook, pemadaman server, atau instalasi VPS dengan penjelasan yang sederhana dan professional. Panggil selalu dengan "Kak".`,
+        billingAgentName: 'GeekzBilling',
+        billingAgentPrompt: `Kamu spesialis Penjualan, Billing, dan Kebijakan Refund. Bantu Kakak seputar cara pembayaran (QRIS, Bank), konfirmasi status invoice, serta jelaskan kebijakan refund 1 hari jika produk belum aktif atau mengalami gangguan permanen. Panggil selalu dengan "Kak".`
       };
       activeState.botSettings.push(settings);
       saveLocalDatabase(activeState);

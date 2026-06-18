@@ -78,7 +78,7 @@ export default function AdminPortal({ token }: AdminPortalProps) {
         <div className="space-y-0.5">
           <h2 className="text-2xl font-display font-bold text-white flex items-center gap-2">
             <Shield className="text-brand-500 w-6 h-6 shrink-0" />
-            Portal Admin HighHost
+            Portal Admin {import.meta.env.VITE_BRAND_NAME || 'GeekzCS'}
           </h2>
           <p className="text-xs text-slate-400">Panel pengawasan real-time, ledger pembayaran, dan peran pengguna SaaS.</p>
         </div>

@@ -62,8 +62,8 @@ export default function Navbar({ user, subPackage, activeTab, setActiveTab, onLo
               <Smartphone className="text-brand-500 w-5.5 h-5.5" />
             </div>
             <div>
-              <span className="font-display font-bold text-white text-base tracking-tight block">HighHost WA</span>
-              <p className="text-[9px] uppercase tracking-wider text-slate-500 font-mono leading-none">Automated Bot Platform</p>
+              <span className="font-display font-bold text-white text-base tracking-tight block">{(import.meta.env.VITE_BRAND_NAME || 'GeekzCS') + ' WA'}</span>
+              <p className="text-[9px] uppercase tracking-wider text-slate-500 font-mono leading-none">Automated CS AI Agent</p>
             </div>
           </div>
 

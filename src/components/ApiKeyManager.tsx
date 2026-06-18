@@ -25,7 +25,7 @@ export default function ApiKeyManager({ apiKeys, subPackage, onGenerateKey, onDe
         <div className="space-y-1.5">
           <h3 className="text-xl font-display font-semibold text-white">Security API Keys Access</h3>
           <p className="text-slate-400 text-xs leading-relaxed">
-            Kembangkan integrasi program eksternal buatan Anda dengan aman. API Key memungkinkan sistem pihak ketiga mengirim pesan WhatsApp via gateway server HighHost Anda secara terprogram. Akses premium ini eksklusif bagi pemegang lisensi paket <span className="text-blue-400 font-bold">PLUS</span>.
+            Kembangkan integrasi program eksternal buatan Anda dengan aman. API Key memungkinkan sistem pihak ketiga mengirim pesan WhatsApp via gateway server {import.meta.env.VITE_BRAND_NAME || 'GeekzCS'} Anda secara terprogram. Akses premium ini eksklusif bagi pemegang lisensi paket <span className="text-blue-400 font-bold">PLUS</span>.
           </p>
         </div>
         <div className="pt-2">
@@ -142,13 +142,13 @@ export default function ApiKeyManager({ apiKeys, subPackage, onGenerateKey, onDe
 
         <div className="space-y-3 text-xs text-slate-400">
           <p className="leading-relaxed">
-            Kirimkan request HTTP POST ke endpoint server HighHost berikut untuk mengotomatisasikan broadcast WhatsApp dari aplikasi custom ERP, CRM, atau sistem eksternal Anda:
+            Kirimkan request HTTP POST ke endpoint server {import.meta.env.VITE_BRAND_NAME || 'GeekzCS'} berikut untuk mengotomatisasikan broadcast WhatsApp dari aplikasi custom ERP, CRM, atau sistem eksternal Anda:
           </p>
 
           <div className="space-y-2">
             <span className="font-semibold text-slate-300 font-mono block">METHOD &amp; ENDPOINT:</span>
             <span className="p-2 bg-[#0A0A0B] text-brand-500 border border-slate-800/50 rounded block font-mono text-center">
-              POST https://highhost.com/api/v1/send-message
+              POST https://{(import.meta.env.VITE_BRAND_NAME || 'GeekzCS').toLowerCase()}.com/api/v1/send-message
             </span>
           </div>
 

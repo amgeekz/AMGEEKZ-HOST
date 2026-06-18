@@ -219,13 +219,14 @@ export default function App() {
     });
 
     // Receive live updates regarding active pairing scans or session connected changes
-    activeSocket.on('bot-status-updated', (data: { botId: string; status: string; qrCode?: string; phoneNumber?: string }) => {
+    activeSocket.on('bot-status-updated', (data: { botId: string; status: string; qrCode?: string; pairingCode?: string; phoneNumber?: string }) => {
       setBotDoc((prev: any) => {
         if (!prev || prev.botId !== data.botId) return prev;
         return {
           ...prev,
           status: data.status,
           qrCode: data.qrCode || null,
+          pairingCode: data.pairingCode || null,
           phoneNumber: data.phoneNumber || prev.phoneNumber
         };
       });
@@ -319,10 +320,14 @@ export default function App() {
   };
 
   // Device actions
-  const handleStartBotInstance = async () => {
+  const handleStartBotInstance = async (method: 'qr' | 'pairing' = 'qr', phoneNumber?: string) => {
     const res = await fetch('/api/bot/start', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ method, phoneNumber })
     });
     if (res.ok) {
       const data = await res.json();
@@ -354,7 +359,7 @@ export default function App() {
                 <Smartphone className="text-brand-500 w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <span className="font-display font-bold text-white text-sm tracking-tight block">HighHost WA</span>
+                <span className="font-display font-bold text-white text-sm tracking-tight block">{(import.meta.env.VITE_BRAND_NAME || 'GeekzCS') + ' WA'}</span>
                 <p className="text-[8px] uppercase tracking-wider text-slate-500 font-mono leading-none">Automated Bot Platform</p>
               </div>
             </div>
@@ -384,7 +389,7 @@ export default function App() {
             </h1>
 
             <p className="text-slate-400 text-sm md:text-base leading-relaxed max-w-xl">
-              Platform hosting bot WhatsApp berbasis library Baileys performa tinggi. Otomatisasikan keyword teks, broadcast harian, hingga asisten AI Customer Service interaktif yang memahami bahasa alami pelanggan.
+              {import.meta.env.VITE_BRAND_DESCRIPTION || "Platform hosting bot WhatsApp berbasis library Baileys performa tinggi. Otomatisasikan keyword teks, broadcast harian, hingga asisten AI Customer Service interaktif yang memahami bahasa alami pelanggan."}
             </p>
 
             {/* Micro feature cards */}
@@ -509,6 +514,8 @@ export default function App() {
               </button>
             </form>
 
+
+
             <div className="text-center pt-2 border-t border-slate-850/60">
               <button
                 onClick={() => {
@@ -525,7 +532,7 @@ export default function App() {
         </main>
 
         <footer className="border-t border-slate-800/50 bg-[#111114] py-6 text-center text-[11px] text-slate-500 font-mono">
-          &copy; 2026 HighHost WA Gateway hosting. All rights reserved. &middot; Powered by Baileys library
+          &copy; 2026 {import.meta.env.VITE_BRAND_NAME || 'GeekzCS'} WA Gateway hosting. All rights reserved. &middot; Powered by Baileys library
         </footer>
       </div>
     );
@@ -576,6 +583,8 @@ export default function App() {
               onStart={handleStartBotInstance}
               onStop={handleStopBotInstance}
               onRefreshStatus={() => fetchBotStatus(token)}
+              subPackage={subTierName}
+              analytics={analytics}
             />
           )}
 
@@ -624,7 +633,7 @@ export default function App() {
       </div>
 
       <footer className="border-t border-slate-800/50 bg-[#111114] p-5 text-center text-xs text-slate-500 font-mono flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
-        <span className="text-slate-450">HighHost Cloud Gateway &middot; Pterodactyl Sandbox</span>
+        <span className="text-slate-450">{import.meta.env.VITE_BRAND_NAME || 'GeekzCS'} Cloud Gateway &middot; Sandbox</span>
         <div className="flex gap-4">
           <span className="text-emerald-500 flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>

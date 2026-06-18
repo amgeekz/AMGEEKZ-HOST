@@ -7,7 +7,7 @@ import { BotService } from '../services/botService';
 import { PakasirService } from '../services/pakasir';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'secure-highhost-secret-string';
+const JWT_SECRET = process.env.JWT_SECRET || 'secure-geekzhost-secret-string';
 
 // Helper to attach Socket.io instance dynamically in routes if available
 let socketIoInstance: any = null;
@@ -229,7 +229,8 @@ router.post('/bot/start', authenticateToken as any, async (req: AuthenticatedReq
        res.status(404).json({ error: 'Bot document not found. Create one first.' });
        return;
     }
-    const updatedBot = await BotService.startBot(bot.botId, userId, socketIoInstance);
+    const { method, phoneNumber } = req.body || {};
+    const updatedBot = await BotService.startBot(bot.botId, userId, socketIoInstance, method, phoneNumber);
     res.json({ bot: updatedBot });
   } catch (err) {
     res.status(500).json({ error: 'Gagal menyalakan WhatsApp Bot.' });
@@ -429,7 +430,8 @@ router.post('/webhook/pakasir', async (req, res) => {
       }
     }
 
-    res.json({ message: 'Webhook callback processed successfully by HighHost Backend' });
+    const brand = process.env.VITE_BRAND_NAME || 'GeekzCS';
+    res.json({ message: `Webhook callback processed successfully by ${brand} Backend` });
   } catch (err) {
     res.status(500).json({ error: 'Internal callback fail' });
   }
