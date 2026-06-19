@@ -5,12 +5,20 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import apiRouter, { setSocketIo } from './src/routes/api';
 import { BotService } from './src/services/botService';
+import { syncFromFirestore } from './src/db/dbInstance';
 
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
 
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
+  
+  // Sync database with Firestore if config/service account is initialized
+  try {
+    await syncFromFirestore();
+  } catch (syncErr) {
+    console.error("💥 Failed loading Firestore initial state upon starting:", syncErr);
+  }
   
   // Set up Socket.io with allowed CORS origins
   const io = new Server(server, {
@@ -78,7 +86,7 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(Number(PORT), '0.0.0.0', () => {
     const brand = process.env.VITE_BRAND_NAME || 'GeekzCS';
     console.log(`===============================================`);
     console.log(`📡 ${brand} WA Bot Hosting Server is ONLINE`);

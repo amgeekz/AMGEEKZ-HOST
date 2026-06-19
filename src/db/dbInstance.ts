@@ -1,5 +1,67 @@
 import fs from 'fs';
 import path from 'path';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+
+// Initialize Firebase Admin SDK if serviceAccountKey.json is present
+let firestoreDb: Firestore | null = null;
+let useFirebase = false;
+
+try {
+  const saPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
+  if (fs.existsSync(saPath)) {
+    const serviceAccount = JSON.parse(fs.readFileSync(saPath, 'utf8'));
+    
+    if (getApps().length === 0) {
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+    }
+    
+    firestoreDb = getFirestore();
+    useFirebase = true;
+    console.log("🔥 Firebase Admin SDK initialized successfully using serviceAccountKey.json.");
+  } else {
+    console.log("⚠️ serviceAccountKey.json not found. Fallback to local file database.");
+  }
+} catch (error) {
+  console.error("❌ Failed to initialize Firebase Admin SDK:", error);
+}
+
+async function fetchCollectionSync<T>(collectionName: string): Promise<T[]> {
+  if (!useFirebase || !firestoreDb) return [];
+  try {
+    const snapshot = await firestoreDb.collection(collectionName).get();
+    const items: T[] = [];
+    snapshot.forEach(doc => {
+      items.push({ id: doc.id, ...doc.data() } as any);
+    });
+    return items;
+  } catch (error) {
+    console.error(`Error reading ${collectionName} from Firestore:`, error);
+    return [];
+  }
+}
+
+async function saveToFirestoreDoc(collectionName: string, docId: string, data: any) {
+  if (!useFirebase || !firestoreDb) return;
+  try {
+    // Sanitize data (remove undefined properties since Firestore doesn't reject them cleanly)
+    const sanitized = JSON.parse(JSON.stringify(data));
+    await firestoreDb.collection(collectionName).doc(docId).set(sanitized, { merge: true });
+  } catch (error) {
+    console.error(`Failed to save doc ${docId} to Firestore collection ${collectionName}:`, error);
+  }
+}
+
+async function deleteFromFirestoreDoc(collectionName: string, docId: string) {
+  if (!useFirebase || !firestoreDb) return;
+  try {
+    await firestoreDb.collection(collectionName).doc(docId).delete();
+  } catch (error) {
+    console.error(`Failed to delete doc ${docId} from Firestore collection ${collectionName}:`, error);
+  }
+}
 
 // Interfaces based on the Firestore schema
 export interface User {
@@ -189,6 +251,52 @@ function saveLocalDatabase(state: DatabaseState) {
 // Instantiate fallback JSON database database
 let activeState = loadLocalDatabase();
 
+// Sync from Firestore startup hook
+export async function syncFromFirestore() {
+  if (!useFirebase || !firestoreDb) return;
+  try {
+    console.log("📥 Syncing database FROM Firestore...");
+    
+    const users = await fetchCollectionSync<User>('users');
+    const subscriptions = await fetchCollectionSync<Subscription>('subscriptions');
+    const bots = await fetchCollectionSync<Bot>('bots');
+    const botSettings = await fetchCollectionSync<BotSettings>('botSettings');
+    const payments = await fetchCollectionSync<Payment>('payments');
+    const botLogs = await fetchCollectionSync<BotLog>('botLogs');
+    const analytics = await fetchCollectionSync<Analytics>('analytics');
+    const apiKeys = await fetchCollectionSync<ApiKey>('apiKeys');
+
+    if (users.length === 0) {
+      console.log("🌱 Firestore 'users' is empty. Seeding initial local database state to Firestore...");
+      
+      for (const u of activeState.users) {
+        await saveToFirestoreDoc('users', u.userId, u);
+      }
+      for (const s of activeState.subscriptions) {
+        await saveToFirestoreDoc('subscriptions', s.id, s);
+      }
+      for (const bs of activeState.botSettings) {
+        await saveToFirestoreDoc('botSettings', bs.botId, bs);
+      }
+      console.log("🌱 Database seeding to Firestore completed.");
+    } else {
+      activeState.users = users;
+      activeState.subscriptions = subscriptions;
+      activeState.bots = bots;
+      activeState.botSettings = botSettings;
+      activeState.payments = payments;
+      activeState.botLogs = botLogs;
+      activeState.analytics = analytics;
+      activeState.apiKeys = apiKeys;
+      
+      saveLocalDatabase(activeState);
+      console.log(`✅ Loaded ${users.length} users, ${subscriptions.length} subs, ${bots.length} bots from Firestore.`);
+    }
+  } catch (err) {
+    console.error("❌ Error during startup sync from Firestore:", err);
+  }
+}
+
 // In Firebase setup mode, we can extend actual Firestore endpoints, but as instructed under guidelines
 // "Always implement a local database fallback, such as a file-based state so the app remains fully interactive during local preview".
 // We wrap our queries to guarantee standard interface compliance.
@@ -203,6 +311,7 @@ export const Database = {
     if (idx >= 0) activeState.users[idx] = user;
     else activeState.users.push(user);
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('users', user.userId, user);
     return user;
   },
 
@@ -216,6 +325,7 @@ export const Database = {
     if (idx >= 0) activeState.subscriptions[idx] = sub;
     else activeState.subscriptions.push(sub);
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('subscriptions', sub.id, sub);
     return sub;
   },
 
@@ -233,6 +343,7 @@ export const Database = {
     if (idx >= 0) activeState.bots[idx] = bot;
     else activeState.bots.push(bot);
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('bots', bot.botId, bot);
     return bot;
   },
 
@@ -301,6 +412,7 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
       };
       activeState.botSettings.push(settings);
       saveLocalDatabase(activeState);
+      saveToFirestoreDoc('botSettings', settings.botId, settings);
     }
     return settings;
   },
@@ -310,6 +422,7 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
     if (idx >= 0) activeState.botSettings[idx] = settings;
     else activeState.botSettings.push(settings);
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('botSettings', settings.botId, settings);
     return settings;
   },
 
@@ -327,6 +440,7 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
     if (idx >= 0) activeState.payments[idx] = payment;
     else activeState.payments.push(payment);
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('payments', payment.orderId, payment);
     return payment;
   },
 
@@ -349,8 +463,12 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
     if (botLogsOnly.length > 50) {
       const oldestLogsToRem = botLogsOnly.slice(0, botLogsOnly.length - 50);
       activeState.botLogs = activeState.botLogs.filter(l => !oldestLogsToRem.includes(l));
+      for (const oldL of oldestLogsToRem) {
+        deleteFromFirestoreDoc('botLogs', oldL.id);
+      }
     }
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('botLogs', newLog.id, newLog);
     return newLog;
   },
 
@@ -376,6 +494,11 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
       }
       activeState.analytics.push(...historical);
       saveLocalDatabase(activeState);
+      
+      // Sync seeded analytics to Firestore
+      for (const h of historical) {
+        saveToFirestoreDoc('analytics', `${botId}_${h.date}`, h);
+      }
       return historical;
     }
     return data;
@@ -401,6 +524,7 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
       record.messagesSent += 1;
     }
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('analytics', `${botId}_${dateStr}`, record);
   },
 
   getApiKeys: (userId: string) => {
@@ -413,12 +537,14 @@ Kalau Kakak tanya hal yang nggak saya tahu jawabannya, saya bakal coba kasih sol
     if (idx >= 0) activeState.apiKeys[idx] = apiKey;
     else activeState.apiKeys.push(apiKey);
     saveLocalDatabase(activeState);
+    saveToFirestoreDoc('apiKeys', apiKey.id, apiKey);
     return apiKey;
   },
   deleteApiKey: (id: string, userId: string) => {
     activeState = loadLocalDatabase();
     activeState.apiKeys = activeState.apiKeys.filter(k => !(k.id === id && k.userId === userId));
     saveLocalDatabase(activeState);
+    deleteFromFirestoreDoc('apiKeys', id);
     return true;
   }
 };
